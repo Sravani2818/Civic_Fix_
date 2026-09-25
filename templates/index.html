@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CivicFix | ML Analytics Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">CF</div><div><h1>CivicFix</h1><p>ML Analytics</p></div></div>
+  <nav>
+    <a href="#home" class="active">⌂ <span>Home</span></a>
+    <div class="nav-title">Data Analysis</div>
+    <a href="#data">▦ <span>Load Data</span></a><a href="#preprocessing">⚙ <span>Preprocessing</span></a><a href="#eda">◈ <span>EDA & Graphs</span></a>
+    <div class="nav-title">Regression</div>
+    <div class="nav-group-label">↗ <span>Linear Regression</span></div>
+    <a class="subnav variant-link" data-variant="linear-without" href="#linear-without">Without Regularisation</a>
+    <a class="subnav variant-link" data-variant="linear-with" href="#linear-with">With Regularisation</a>
+    <div class="nav-title">Classification</div>
+    <div class="nav-group-label">◎ <span>Logistic Regression</span></div>
+    <a class="subnav variant-link" data-variant="logistic-without" href="#logistic-without">Without Regularisation</a>
+    <a class="subnav variant-link" data-variant="logistic-with" href="#logistic-with">With Regularisation</a>
+    <div class="nav-title">Tree & Boosting</div>
+    <a href="#decision-tree">⌘ <span>Decision Tree</span></a><a href="#random-forest">◫ <span>Random Forest</span></a><a href="#adaboost">⚡ <span>AdaBoost</span></a><a href="#gradient-boost">↯ <span>Gradient Boosting</span></a><a href="#xgboost">✦ <span>XGBoost</span></a><a href="#lightgbm">◆ <span>LightGBM</span></a>
+    <div class="nav-title">Evaluation</div><a href="#comparison">▤ <span>Model Comparison</span></a><a href="#insights">✧ <span>Overall Insights</span></a>
+  </nav>
+</aside>
+<main class="main-content">
+<header class="topbar"><span class="eyebrow">AI / ML ANALYTICS PLATFORM</span><span class="status-dot">● System dashboard</span></header>
+<section id="home" class="hero section-anchor">
+  <div><div class="hero-kicker">CIVIC RESPONSE INTELLIGENCE</div><h2>Bridging Citizens and Cities<br><span>through AI-Driven Response Management</span></h2><p>CivicFix turns civic complaint data into an explainable machine-learning analytics workflow—from preprocessing and exploration to model evaluation and comparison.</p><div class="hero-actions"><a href="#comparison" class="btn primary">Explore model results</a><a href="#eda" class="btn secondary">View EDA</a></div></div>
+  <div class="hero-panel"><div class="orb"></div><div class="hero-panel-content"><span>LIVE PROJECT VIEW</span><strong>{{ total_rows }}</strong><small>dataset records</small><div class="mini-line"><i style="width:{{ 100 if preprocessing.status == 'Ready' else 20 }}%"></i></div><small>{{ preprocessing.status }} • actual project outputs</small></div></div>
+</section>
+<section class="stats-grid"><div class="stat-card"><span>Dataset rows</span><strong>{{ total_rows }}</strong><small>Loaded from project data</small></div><div class="stat-card"><span>Dataset columns</span><strong>{{ total_cols }}</strong><small>Raw dataset structure</small></div><div class="stat-card"><span>Target</span><strong>{{ target_col or '—' }}</strong><small>Primary model target</small></div><div class="stat-card"><span>Models tracked</span><strong>{{ model_comparison|length }}</strong><small>Available stored results</small></div></section>
+<section id="data" class="section-anchor"><div class="section-head"><div><span class="eyebrow">01 · DATA</span><h2>Dataset Overview</h2><p>Quick view of the source data and its structure before modelling.</p></div></div><div class="grid-2"><div class="card"><h3>Feature groups</h3><div class="chips">{% for c in num_cols %}<span class="chip">Numeric · {{ c }}</span>{% endfor %}{% for c in cat_cols %}<span class="chip">Categorical · {{ c }}</span>{% endfor %}</div></div><div class="card"><h3>Data preview</h3><div class="table-scroll"><table><thead><tr>{% for c in table_columns[:8] %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>{% for row in table_data[:6] %}<tr>{% for c in table_columns[:8] %}<td>{{ row[c] }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div></div></section>
+<section id="preprocessing" class="section-anchor"><div class="section-head"><div><span class="eyebrow">02 · PIPELINE</span><h2>Preprocessing</h2><p>Metadata is calculated from the project's raw and processed datasets rather than hard-coded dashboard values.</p></div></div><div class="metric-grid">{% for label,value in [('Missing before',preprocessing.missing_before),('Missing after',preprocessing.missing_after),('Duplicates before',preprocessing.duplicates_before),('Duplicates after',preprocessing.duplicates_after),('Original features',preprocessing.original_features),('Final features',preprocessing.final_features)] %}<div class="metric-card"><span>{{ label }}</span><strong>{{ value }}</strong></div>{% endfor %}</div><div class="process-row"><div class="card"><span class="step">01</span><h3>Encoding</h3><p>{{ preprocessing.encoding }}</p></div><div class="card"><span class="step">02</span><h3>Scaling</h3><p>{{ preprocessing.scaling }}</p></div><div class="card"><span class="step">03</span><h3>Pipeline status</h3><p><b>{{ preprocessing.status }}</b> — derived from available project data.</p></div></div></section>
+<section id="eda" class="section-anchor"><div class="section-head"><div><span class="eyebrow">03 · EXPLORATION</span><h2>EDA & Graphs</h2><p>Each visualization is presented with the question it helps answer.</p></div></div><div class="graph-grid">
+{% set eda = [('Complaint Status Distribution','Shows the distribution of complaint statuses in the dataset.','5_status_distribution.png'),('Numeric Distributions','Highlights the spread and scale of important numeric variables.','6_numeric_distributions.png'),('Resolution Time Distribution','Shows how resolution time is distributed across complaints.','6_resolution_time_dist.png'),('Latitude Outliers','Helps identify unusually positioned latitude observations.','7_boxplot_latitude.png'),('Longitude Outliers','Helps identify unusually positioned longitude observations.','7_boxplot_longitude.png'),('Resolution Time Outliers','Highlights unusually short or long resolution times.','7_boxplot_Resolution_Time_Hours.png'),('Correlation Heatmap','Shows relationships among numerical variables and helps identify correlated features.','8_correlation_heatmap.png'),('Geographical Scatter Plot','Shows the spatial distribution of complaint records using latitude and longitude.','9_scatter_geo.png'),('Agency Distribution','Shows which agencies appear most frequently in the complaint data.','10_count_agency_name.png'),('Complaint Type Distribution','Shows the frequency of complaint categories.','10_count_complaint_type.png'),('Borough Distribution','Shows how complaints are distributed across boroughs.','10_count_borough.png'),('Location Type Distribution','Summarizes where complaints are reported.','10_count_location_type.png'),('Channel Distribution','Shows the channels through which complaints were submitted.','10_count_open_data_channel_type.png'),('Borough vs Status','Compares complaint status across boroughs.','11_borough_vs_status.png'),('Agency vs Status','Compares complaint status across agencies.','12_agency_vs_status.png'),('Monthly Trend','Shows how complaint volume changes over time.','13_monthly_trend.png'),('Resolution Histogram','Shows the distribution of resolution-time values.','14_resolution_hist.png'),('Resolution Box Plot','Provides another view of resolution-time spread and outliers.','14_resolution_box.png'),('Pair Plot','Shows pairwise relationships among selected numerical variables.','15_pairplot.png') ] %}{% for title,desc,file in eda %}<article class="graph-card"><div><h3>{{ title }}</h3><p>{{ desc }}</p></div><img src="{{ url_for('static', filename='images/' ~ file) }}" alt="{{ title }}"></article>{% endfor %}</div></section>
+
+{% macro model_section(id, eyebrow, title, description, result, image=None, extra=None) %}<section id="{{ id }}" class="section-anchor"><div class="section-head"><div><span class="eyebrow">{{ eyebrow }}</span><h2>{{ title }}</h2><p>{{ description }}</p></div></div><div class="model-layout"><div class="card"><div class="model-badge">{{ title }}</div>{% if result %}<div class="metric-grid compact">{% for label,key in [('Accuracy','accuracy'),('Precision','precision'),('Recall','recall'),('F1-score','f1_score'),('Training rows','training_samples'),('Testing rows','testing_samples'),('Features','features')] %}{% if result.get(key) is not none %}<div class="metric-card"><span>{{ label }}</span><strong>{% if key in ['accuracy','precision','recall','f1_score'] %}{{ '%.3f'|format(result.get(key)|float) }}{% else %}{{ result.get(key) }}{% endif %}</strong></div>{% endif %}{% endfor %}</div><div class="details"><b>Model parameters / stored metadata</b><div class="details-list">{% for k,v in result.items() %}{% if k not in ['accuracy','precision','recall','f1_score','training_samples','testing_samples','features'] %}<span><small>{{ k|replace('_',' ')|title }}</small>{{ v }}</span>{% endif %}{% endfor %}</div></div>{% else %}<div class="empty">No stored result is available yet. Run the model script to populate the dashboard.</div>{% endif %}</div>{% if image %}<div class="card visual-card"><h3>Model visualization</h3><p>Generated from project output and displayed dynamically through Flask.</p><img src="{{ url_for('static', filename=image) }}" alt="{{ title }} visualization"></div>{% endif %}</div></section>{% endmacro %}
+<section id="linear" class="section-anchor variant-section">
+  <div class="section-head"><div><span class="eyebrow">04 · REGRESSION</span><h2>Linear Regression</h2><p>Choose between the baseline model and the regularised versions. The values shown here come from <b>linear_regression_results.json</b>.</p></div></div>
+  <div class="variant-tabs">
+    <a class="variant-tab active" data-variant="linear-without" href="#linear-without">Without Regularisation</a>
+    <a class="variant-tab" data-variant="linear-with" href="#linear-with">With Regularisation</a>
+  </div>
+  <div id="linear-without" class="variant-panel active">
+    {% set r=linear_results.get('without_regularisation', {}) %}<div class="grid-2"><div class="card"><div class="model-badge">LINEAR · WITHOUT REGULARISATION</div>{% if r %}<p class="variant-note">Baseline <b>LinearRegression</b> model with no explicit regularisation penalty.</p><div class="metric-grid compact">{% for label,key in [('MAE','mae'),('MSE','mse'),('RMSE','rmse'),('R²','r2_score')] %}<div class="metric-card"><span>{{ label }}</span><strong>{{ r.get(key) }}</strong></div>{% endfor %}</div>{% else %}<div class="empty">No stored Linear Regression baseline result is available.</div>{% endif %}</div><div class="card"><h3>What this means</h3><p>This is the baseline regression model. It predicts the continuous target without adding a regularisation penalty to the loss.</p></div></div>
+  </div>
+  <div id="linear-with" class="variant-panel">
+    <div class="grid-2"><div class="card"><div class="model-badge">LINEAR · WITH REGULARISATION</div><p class="variant-note">The stored regularised variants are <b>Ridge (L2)</b> and <b>Lasso (L1)</b>. They are grouped under one dashboard option as requested.</p><div class="grid-2">{% for key,label,reg in [('ridge_regularisation','Ridge Regression','L2'),('lasso_regularisation','Lasso Regression','L1')] %}{% set r=linear_results.get(key,{}) %}{% if r %}<div class="card inner-card"><span class="model-badge">{{ reg }} REGULARISATION</span><h3>{{ label }}</h3><div class="metric-stack"><div><span>MAE</span><b>{{ r.get('mae') }}</b></div><div><span>MSE</span><b>{{ r.get('mse') }}</b></div><div><span>RMSE</span><b>{{ r.get('rmse') }}</b></div><div><span>R²</span><b>{{ r.get('r2_score') }}</b></div></div></div>{% endif %}{% endfor %}</div></div><div class="card visual-card">{% if assets.ridge %}<h3>Regularised Regression Visualization</h3><p>Actual versus predicted values from the project's stored Ridge output.</p><img src="{{ url_for('static', filename=assets.ridge[0]) }}" alt="Ridge actual versus predicted">{% else %}<div class="empty">No stored regularised regression visualization is available yet.</div>{% endif %}</div></div>
+  </div>
+</section>
+
+
+<section id="logistic" class="section-anchor variant-section">
+  <div class="section-head"><div><span class="eyebrow">05 · CLASSIFICATION</span><h2>Logistic Regression</h2><p>Choose exactly one variant below. Both variants use the same dataset split; the difference is whether the Logistic Regression penalty is disabled or enabled.</p></div></div>
+  <div class="variant-choice-title">Choose Logistic Regression variant</div>
+  <div class="variant-tabs logistic-variant-tabs">
+    <a class="variant-tab active" data-variant="logistic-without" href="#logistic-without">
+      <span class="variant-tab-number">01</span>
+      <span><b>Without Regularisation</b><small>Baseline Logistic Regression</small></span>
+    </a>
+    <a class="variant-tab" data-variant="logistic-with" href="#logistic-with">
+      <span class="variant-tab-number">02</span>
+      <span><b>With Regularisation</b><small>L2-regularised Logistic Regression</small></span>
+    </a>
+  </div>
+  <div id="logistic-without" class="variant-panel active">
+    <div class="model-layout"><div class="card"><div class="model-badge">LOGISTIC · WITHOUT REGULARISATION</div>{% if logistic_without_results %}<p class="variant-note">Regularisation is disabled using <b>penalty=None</b>.</p><div class="metric-grid compact">{% for label,key in [('Accuracy','accuracy'),('Precision','precision'),('Recall','recall'),('F1-score','f1_score'),('Training rows','training_samples'),('Testing rows','testing_samples'),('Features','features')] %}{% set value=logistic_without_results.get(key, logistic_variants.get(key)) %}{% if value is not none %}<div class="metric-card"><span>{{ label }}</span><strong>{% if key in ['accuracy','precision','recall','f1_score'] %}{{ '%.3f'|format(value|float) }}{% else %}{{ value }}{% endif %}</strong></div>{% endif %}{% endfor %}</div>{% if logistic_without_results.get('confusion_matrix') %}<div class="details"><b>Confusion matrix</b><pre class="matrix">{{ logistic_without_results.get('confusion_matrix') }}</pre></div>{% endif %}{% else %}<div class="empty">No result is stored yet. Run <b>py logistic_regression.py</b> once to generate both Logistic Regression variants.</div>{% endif %}</div><div class="card"><h3>What this means</h3><p>Without regularisation, the model is trained without an L1/L2 penalty term. This gives you a direct baseline for comparison with the regularised version.</p></div></div>
+  </div>
+  <div id="logistic-with" class="variant-panel">
+    <div class="model-layout"><div class="card"><div class="model-badge">LOGISTIC · WITH L2 REGULARISATION</div>{% if logistic_with_results %}<p class="variant-note">The stored run uses <b>L2 regularisation</b> with <b>C={{ logistic_with_results.get('C', 1.0) }}</b>.</p><div class="metric-grid compact">{% for label,key in [('Accuracy','accuracy'),('Precision','precision'),('Recall','recall'),('F1-score','f1_score'),('Training rows','training_samples'),('Testing rows','testing_samples'),('Features','features')] %}{% set value=logistic_with_results.get(key, logistic_variants.get(key)) %}{% if value is not none %}<div class="metric-card"><span>{{ label }}</span><strong>{% if key in ['accuracy','precision','recall','f1_score'] %}{{ '%.3f'|format(value|float) }}{% else %}{{ value }}{% endif %}</strong></div>{% endif %}{% endfor %}</div>{% if logistic_with_results.get('confusion_matrix') %}<div class="details"><b>Confusion matrix</b><pre class="matrix">{{ logistic_with_results.get('confusion_matrix') }}</pre></div>{% endif %}{% else %}<div class="empty">No regularised result is stored yet. Run <b>py logistic_regression.py</b>.</div>{% endif %}</div><div class="card"><h3>Why regularisation?</h3><p>L2 regularisation penalises large model coefficients and can help control model complexity. Here the dashboard displays the actual <b>C</b> value and metrics produced by the script.</p></div></div>
+  </div>
+</section>
+{{ model_section('decision-tree','06 · TREE MODEL','Decision Tree','Recursively splits observations using feature conditions to form an interpretable classification structure.',decision_tree_results,'images/models/decision_tree.png') }}
+{{ model_section('random-forest','07 · ENSEMBLE','Random Forest','Combines multiple decision trees and aggregates their predictions for a more robust ensemble model.',random_forest_results,'images/models/random_forest_feature_importance.png') }}
+{{ model_section('adaboost','08 · BOOSTING','AdaBoost','Sequentially focuses on difficult observations and combines weak learners into a stronger classifier.',adaboost_results,'images/models/adaboost_feature_importance.png') }}
+{{ model_section('gradient-boost','09 · BOOSTING','Gradient Boosting','Builds an additive ensemble by fitting successive trees to reduce prediction error.',gradient_boost_results) }}
+{{ model_section('xgboost','10 · BOOSTING','XGBoost','Gradient-boosted trees with regularisation and efficient tree construction for classification.',xgboost_results,'images/models/xgboost_feature_importance.png') }}
+{{ model_section('lightgbm','11 · BOOSTING','LightGBM','A gradient-boosting framework designed around efficient tree-based learning.',lightgbm_results,'images/models/lightgbm_confusion_matrix.png') }}
+<section id="comparison" class="section-anchor"><div class="section-head"><div><span class="eyebrow">12 · EVALUATION</span><h2>Model Comparison</h2><p>This table compares the performance metrics calculated from the project's stored test results. Metrics that do not apply to a model are left blank.</p></div></div><div class="card">{% if assets.comparison %}<div class="comparison-chart"><img src="{{ url_for('static', filename=assets.comparison) }}" alt="Classification model accuracy comparison"></div>{% endif %}<div class="table-scroll"><table class="comparison"><thead><tr><th>Model</th><th>Type</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>MAE</th><th>RMSE</th><th>R²</th></tr></thead><tbody>{% for row in model_comparison %}<tr><td><b>{{ row.model }}</b></td><td><span class="type-pill">{{ row.type }}</span></td><td>{% if row.accuracy is not none %}{{ '%.3f'|format(row.accuracy|float) }}{% else %}—{% endif %}</td><td>{% if row.precision is not none %}{{ '%.3f'|format(row.precision|float) }}{% else %}—{% endif %}</td><td>{% if row.recall is not none %}{{ '%.3f'|format(row.recall|float) }}{% else %}—{% endif %}</td><td>{% if row.f1 is not none %}{{ '%.3f'|format(row.f1|float) }}{% else %}—{% endif %}</td><td>{% if row.mae is not none %}{{ row.mae }}{% else %}—{% endif %}</td><td>{% if row.rmse is not none %}{{ row.rmse }}{% else %}—{% endif %}</td><td>{% if row.r2 is not none %}{{ row.r2 }}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody></table></div></div></section>
+<section id="insights" class="section-anchor"><div class="section-head"><div><span class="eyebrow">13 · SYNTHESIS</span><h2>Overall Insights</h2><p>Concise statements generated from the actual project metadata and stored model results.</p></div></div><div class="insight-list">{% for line in insights %}<div class="insight"><span>✓</span><p>{{ line }}</p></div>{% endfor %}</div></section>
+<footer>CivicFix · Bridging Citizens and Cities through AI-Driven Response Management</footer>
+</main>
+<script>
+const links=[...document.querySelectorAll('.sidebar nav a:not(.variant-link)')];
+const sections=[...document.querySelectorAll('.section-anchor')];
+const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+entry.target.id));}})},{rootMargin:'-25% 0px -65% 0px',threshold:0});
+sections.forEach(s=>observer.observe(s));
+
+const variantLinks=[...document.querySelectorAll('.variant-link, .variant-tab')];
+const panels=[...document.querySelectorAll('.variant-panel')];
+function activateVariant(id, scroll=false){
+  panels.forEach(p=>p.classList.toggle('active',p.id===id));
+  variantLinks.forEach(l=>l.classList.toggle('active',l.dataset.variant===id));
+  if(scroll){
+    const panel=document.getElementById(id);
+    if(panel) panel.closest('.variant-section')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+variantLinks.forEach(link=>{
+  link.addEventListener('click',event=>{
+    event.preventDefault();
+    activateVariant(link.dataset.variant,true);
+    history.replaceState(null,'','#'+link.dataset.variant);
+  });
+});
+if(location.hash){
+  const initial=location.hash.substring(1);
+  if(document.getElementById(initial)?.classList.contains('variant-panel')) activateVariant(initial,false);
+}
+</script>
+</body></html>
