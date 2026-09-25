@@ -1,0 +1,2 @@
+model,accuracy,precision,recall,f1_score,training_samples,testing_samples,features
+AdaBoost,0.7822515212981744,0.7651750231852201,0.7822515212981744,0.7697967183359546,39440,9860,953
