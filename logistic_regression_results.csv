@@ -1,0 +1,2 @@
+model,accuracy,precision,recall,f1_score,training_samples,testing_samples,features
+Logistic Regression,0.87079107505071,0.8664993566861244,0.87079107505071,0.8679075525889239,39440,9860,953

@@ -1,0 +1,129 @@
+{
+    "model": "Logistic Regression",
+    "target": "status",
+    "classes": [
+        "Assigned",
+        "Closed",
+        "In Progress",
+        "Open",
+        "Pending",
+        "Unspecified"
+    ],
+    "training_samples": 40000,
+    "testing_samples": 10000,
+    "features": 953,
+    "without_regularisation": {
+        "accuracy": 0.8701,
+        "precision": 0.865848,
+        "recall": 0.8701,
+        "f1_score": 0.867505,
+        "confusion_matrix": [
+            [
+                0,
+                18,
+                0,
+                13,
+                0,
+                0
+            ],
+            [
+                2,
+                5241,
+                340,
+                260,
+                0,
+                0
+            ],
+            [
+                0,
+                506,
+                1320,
+                0,
+                0,
+                0
+            ],
+            [
+                2,
+                154,
+                0,
+                2140,
+                0,
+                0
+            ],
+            [
+                0,
+                2,
+                0,
+                1,
+                0,
+                0
+            ],
+            [
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+            ]
+        ]
+    },
+    "with_regularisation": {
+        "accuracy": 0.87,
+        "precision": 0.865738,
+        "recall": 0.87,
+        "f1_score": 0.867396,
+        "confusion_matrix": [
+            [
+                0,
+                18,
+                0,
+                13,
+                0,
+                0
+            ],
+            [
+                2,
+                5241,
+                340,
+                260,
+                0,
+                0
+            ],
+            [
+                0,
+                507,
+                1319,
+                0,
+                0,
+                0
+            ],
+            [
+                2,
+                154,
+                0,
+                2140,
+                0,
+                0
+            ],
+            [
+                0,
+                2,
+                0,
+                1,
+                0,
+                0
+            ],
+            [
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+            ]
+        ],
+        "penalty": "L2",
+        "C": 1.0
+    }
+}

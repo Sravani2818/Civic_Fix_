@@ -1,0 +1,25 @@
+{
+    "without_regularisation": {
+        "model": "LinearRegression",
+        "mse": 0.195809,
+        "rmse": 0.442503,
+        "mae": 0.246531,
+        "r2_score": 0.713921
+    },
+    "ridge_regularisation": {
+        "model": "Ridge",
+        "mse": 0.194502,
+        "rmse": 0.441024,
+        "mae": 0.246895,
+        "r2_score": 0.71583
+    },
+    "lasso_regularisation": {
+        "model": "Lasso",
+        "mse": 0.213594,
+        "rmse": 0.462162,
+        "mae": 0.283114,
+        "r2_score": 0.687937
+    },
+    "best_model": "Ridge Regression",
+    "best_r2_score": 0.71583
+}

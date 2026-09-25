@@ -1,0 +1,56 @@
+{
+    "model": "Ridge Regression",
+    "regularisation": "L2",
+    "alpha": 1.0,
+    "target": "latitude",
+    "dataset_rows": 49300,
+    "training_rows": 39440,
+    "testing_rows": 9860,
+    "features": 10,
+    "mae": 0.023,
+    "mse": 0.0009,
+    "rmse": 0.03,
+    "r2": 0.8723,
+    "predictions": [
+        {
+            "actual": 40.7531,
+            "predicted": 40.7451
+        },
+        {
+            "actual": 40.7261,
+            "predicted": 40.6821
+        },
+        {
+            "actual": 40.8141,
+            "predicted": 40.8407
+        },
+        {
+            "actual": 40.6978,
+            "predicted": 40.6923
+        },
+        {
+            "actual": 40.7086,
+            "predicted": 40.7152
+        },
+        {
+            "actual": 40.6504,
+            "predicted": 40.6513
+        },
+        {
+            "actual": 40.6208,
+            "predicted": 40.617
+        },
+        {
+            "actual": 40.7758,
+            "predicted": 40.7899
+        },
+        {
+            "actual": 40.6259,
+            "predicted": 40.6726
+        },
+        {
+            "actual": 40.6075,
+            "predicted": 40.6523
+        }
+    ]
+}
