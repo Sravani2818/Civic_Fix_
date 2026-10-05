@@ -49,7 +49,7 @@ print("\nDataset Information:")
 data.info()
 
 # ============================================================
-# 3. MISSING VALUES
+# 3. MISSING VALUE ANALYSIS
 # ============================================================
 
 print("\n3. MISSING VALUE ANALYSIS")
@@ -64,6 +64,7 @@ missing_df = pd.DataFrame({
     "Missing Percentage": missing_percentage.values
 })
 
+# Keep only columns having missing values
 missing_df = missing_df[
     missing_df["Missing Count"] > 0
 ].sort_values(
@@ -71,8 +72,43 @@ missing_df = missing_df[
     ascending=False
 )
 
+print("\nMissing Value Summary:")
 print(missing_df)
 
+
+# ============================================================
+# MISSING VALUES GRAPH
+# ============================================================
+
+if not missing_df.empty:
+
+    fig = px.bar(
+        missing_df,
+        x="Column",
+        y="Missing Count",
+        text="Missing Count",
+        title="Missing Values by Column",
+        labels={
+            "Column": "Column Name",
+            "Missing Count": "Number of Missing Values"
+        }
+    )
+
+    fig.update_traces(
+        textposition="outside"
+    )
+
+    fig.update_layout(
+        template="plotly_white",
+        title_x=0.5,
+        xaxis_tickangle=-45
+    )
+
+    fig.show()
+
+else:
+
+    print("\nNo missing values found in the dataset.")
 # ============================================================
 # 4. DUPLICATE ANALYSIS
 # ============================================================

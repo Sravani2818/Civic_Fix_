@@ -1,25 +1,28 @@
 {
     "without_regularisation": {
-        "model": "LinearRegression",
-        "mse": 0.195809,
-        "rmse": 0.442503,
-        "mae": 0.246531,
-        "r2_score": 0.713921
+        "mse": 0.000848,
+        "rmse": 0.029113,
+        "mae": 0.022155,
+        "r2_score": 0.881392,
+        "model": "LinearRegression"
     },
     "ridge_regularisation": {
-        "model": "Ridge",
-        "mse": 0.194502,
-        "rmse": 0.441024,
-        "mae": 0.246895,
-        "r2_score": 0.71583
+        "mse": 0.000842,
+        "rmse": 0.029009,
+        "mae": 0.02209,
+        "r2_score": 0.882242,
+        "model": "Ridge"
     },
     "lasso_regularisation": {
-        "model": "Lasso",
-        "mse": 0.213594,
-        "rmse": 0.462162,
-        "mae": 0.283114,
-        "r2_score": 0.687937
+        "mse": 0.001374,
+        "rmse": 0.037064,
+        "mae": 0.029959,
+        "r2_score": 0.807767,
+        "model": "Lasso"
     },
-    "best_model": "Ridge Regression",
-    "best_r2_score": 0.71583
+    "best_model": "Ridge",
+    "best_r2_score": 0.882242,
+    "target": "latitude",
+    "training_rows": 39164,
+    "testing_rows": 9791
 }

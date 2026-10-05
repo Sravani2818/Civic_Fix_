@@ -1,153 +1,260 @@
+# ============================================================
+# CIVICFIX - LINEAR REGRESSION
+# WITHOUT AND WITH REGULARISATION
+# ============================================================
+
 import os
 import json
-import pandas as pd
+import warnings
 import numpy as np
+import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import LogisticRegression
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix
+    mean_squared_error,
+    mean_absolute_error,
+    r2_score
 )
 
+warnings.filterwarnings("ignore")
+
+
 # ============================================================
-# CIVICFIX - LOGISTIC REGRESSION
+# PATHS
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATASET_PATH = os.path.join(
+DATA_PATH = os.path.join(
     BASE_DIR,
-    "datasetpreprocessed_v2.csv.csv"
+    "dataset.csv"
 )
 
 RESULTS_PATH = os.path.join(
     BASE_DIR,
-    "logistic_regression_results.json"
+    "linear_regression_results.json"
 )
 
+TARGET = "latitude"
+
 
 # ============================================================
-# LOAD AND PREPARE DATA
+# LOAD DATASET
 # ============================================================
 
-def prepare_data():
+def load_dataset():
 
-    if not os.path.exists(DATASET_PATH):
+    if not os.path.exists(DATA_PATH):
+
         raise FileNotFoundError(
-            f"Dataset not found:\n{DATASET_PATH}"
+            f"Dataset not found: {DATA_PATH}"
         )
 
-    df = pd.read_csv(DATASET_PATH)
+    return pd.read_csv(DATA_PATH)
 
-    if "status" not in df.columns:
+
+# ============================================================
+# PREPARE DATA
+# ============================================================
+
+def prepare_data(df):
+
+    if TARGET not in df.columns:
+
         raise ValueError(
-            "Target column 'status' not found."
+            f"Target column '{TARGET}' not found."
         )
 
-    print("Original dataset shape:", df.shape)
-
     # --------------------------------------------------------
-    # Target
+    # Remove rows where target is missing
     # --------------------------------------------------------
 
-    y = df["status"].astype(str)
+    df = df.dropna(
+        subset=[TARGET]
+    ).copy()
+
+    y = pd.to_numeric(
+        df[TARGET],
+        errors="coerce"
+    )
+
+    valid = y.notna()
+
+    df = df.loc[valid].copy()
+
+    y = y.loc[valid]
+
 
     # --------------------------------------------------------
-    # Remove target and non-ML columns
+    # Remove target and unsuitable columns
     # --------------------------------------------------------
 
     columns_to_remove = [
+
+        TARGET,
+
         "status",
+
         "created_date",
+
         "closed_date",
+
         "incident_address",
+
         "resolution_description"
+
     ]
 
     X = df.drop(
         columns=columns_to_remove,
         errors="ignore"
-    ).copy()
+    )
+
 
     # --------------------------------------------------------
-    # Handle missing values
+    # Remove extremely high-cardinality columns
     # --------------------------------------------------------
 
-    numerical_columns = X.select_dtypes(
-        include=np.number
-    ).columns
+    high_cardinality = []
 
     categorical_columns = X.select_dtypes(
-        exclude=np.number
+        include=[
+            "object",
+            "string",
+            "category"
+        ]
     ).columns
-
-    for column in numerical_columns:
-
-        X[column] = X[column].fillna(
-            X[column].median()
-        )
 
     for column in categorical_columns:
 
-        X[column] = X[column].fillna(
-            "Not Available"
+        ratio = (
+            X[column].nunique(
+                dropna=True
+            )
+            /
+            max(len(X), 1)
         )
 
-    # --------------------------------------------------------
-    # One-hot encode categorical features
-    # --------------------------------------------------------
+        if ratio > 0.80:
 
-    X = pd.get_dummies(
-        X,
-        columns=categorical_columns,
-        drop_first=False,
-        dtype=float
+            high_cardinality.append(
+                column
+            )
+
+    X = X.drop(
+        columns=high_cardinality,
+        errors="ignore"
     )
 
-    # --------------------------------------------------------
-    # Make sure everything is numeric
-    # --------------------------------------------------------
-
-    X = X.replace(
-        [np.inf, -np.inf],
-        np.nan
-    )
-
-    X = X.fillna(0)
-
-    # --------------------------------------------------------
-    # Encode target
-    # --------------------------------------------------------
-
-    label_encoder = LabelEncoder()
-
-    y_encoded = label_encoder.fit_transform(y)
-
-    print(
-        "Number of classes:",
-        len(label_encoder.classes_)
-    )
-
-    print(
-        "Classes:",
-        list(label_encoder.classes_)
-    )
-
-    print(
-        "Final feature count:",
-        X.shape[1]
-    )
-
-    return X, y_encoded, label_encoder
+    return X, y
 
 
 # ============================================================
-# EVALUATE MODEL
+# BUILD PREPROCESSOR
+# ============================================================
+
+def build_preprocessor(X):
+
+    numeric_features = X.select_dtypes(
+        include=np.number
+    ).columns.tolist()
+
+    categorical_features = X.select_dtypes(
+        include=[
+            "object",
+            "string",
+            "category"
+        ]
+    ).columns.tolist()
+
+
+    # --------------------------------------------------------
+    # Numerical pipeline
+    # --------------------------------------------------------
+
+    numeric_pipeline = Pipeline(
+        steps=[
+
+            (
+                "imputer",
+                SimpleImputer(
+                    strategy="median"
+                )
+            ),
+
+            (
+                "scaler",
+                StandardScaler()
+            )
+
+        ]
+    )
+
+
+    # --------------------------------------------------------
+    # Categorical pipeline
+    # --------------------------------------------------------
+
+    categorical_pipeline = Pipeline(
+        steps=[
+
+            (
+                "imputer",
+                SimpleImputer(
+                    strategy="most_frequent"
+                )
+            ),
+
+            (
+                "onehot",
+                OneHotEncoder(
+                    handle_unknown="ignore",
+                    sparse_output=False
+                )
+            )
+
+        ]
+    )
+
+
+    transformers = []
+
+
+    if numeric_features:
+
+        transformers.append(
+            (
+                "numeric",
+                numeric_pipeline,
+                numeric_features
+            )
+        )
+
+
+    if categorical_features:
+
+        transformers.append(
+            (
+                "categorical",
+                categorical_pipeline,
+                categorical_features
+            )
+        )
+
+
+    return ColumnTransformer(
+        transformers=transformers,
+        remainder="drop"
+    )
+
+
+# ============================================================
+# EVALUATION
 # ============================================================
 
 def evaluate_model(
@@ -163,59 +270,49 @@ def evaluate_model(
         y_train
     )
 
-    y_pred = model.predict(
+    predictions = model.predict(
         X_test
     )
 
-    accuracy = accuracy_score(
+    mse = mean_squared_error(
         y_test,
-        y_pred
+        predictions
     )
 
-    precision = precision_score(
+    rmse = np.sqrt(mse)
+
+    mae = mean_absolute_error(
         y_test,
-        y_pred,
-        average="weighted",
-        zero_division=0
+        predictions
     )
 
-    recall = recall_score(
+    r2 = r2_score(
         y_test,
-        y_pred,
-        average="weighted",
-        zero_division=0
-    )
-
-    f1 = f1_score(
-        y_test,
-        y_pred,
-        average="weighted",
-        zero_division=0
-    )
-
-    cm = confusion_matrix(
-        y_test,
-        y_pred
+        predictions
     )
 
     return {
-        "accuracy": round(
-            float(accuracy),
+
+        "mse": round(
+            float(mse),
             6
         ),
-        "precision": round(
-            float(precision),
+
+        "rmse": round(
+            float(rmse),
             6
         ),
-        "recall": round(
-            float(recall),
+
+        "mae": round(
+            float(mae),
             6
         ),
-        "f1_score": round(
-            float(f1),
+
+        "r2_score": round(
+            float(r2),
             6
-        ),
-        "confusion_matrix": cm.tolist()
+        )
+
     }
 
 
@@ -223,220 +320,231 @@ def evaluate_model(
 # MAIN
 # ============================================================
 
-def run_logistic_regression():
+def run_linear_regression():
 
     print("=" * 70)
-    print("CIVICFIX - LOGISTIC REGRESSION")
+    print("CIVICFIX - LINEAR REGRESSION")
     print("=" * 70)
 
-    # --------------------------------------------------------
-    # Prepare data
-    # --------------------------------------------------------
-
-    X, y, label_encoder = prepare_data()
-
-    print()
 
     # --------------------------------------------------------
-    # Train / Test split
+    # Load
     # --------------------------------------------------------
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
-        random_state=42,
-        stratify=y
+    df = load_dataset()
+
+    X, y = prepare_data(
+        df
+    )
+
+
+    print(
+        "Original dataset shape:",
+        df.shape
     )
 
     print(
-        "Training samples:",
+        "Target column:",
+        TARGET
+    )
+
+    print(
+        "Rows used:",
+        len(X)
+    )
+
+    print(
+        "Features before encoding:",
+        X.shape[1]
+    )
+
+
+    # --------------------------------------------------------
+    # Train / Test Split
+    # --------------------------------------------------------
+
+    X_train, X_test, y_train, y_test = train_test_split(
+
+        X,
+        y,
+
+        test_size=0.20,
+
+        random_state=42
+
+    )
+
+
+    print(
+        "Training rows:",
         len(X_train)
     )
 
     print(
-        "Testing samples:",
+        "Testing rows:",
         len(X_test)
     )
 
-    print()
-
-    # ========================================================
-    # 1. WITHOUT REGULARISATION
-    # ========================================================
-
-    print("-" * 70)
-    print("1. LOGISTIC REGRESSION - WITHOUT REGULARISATION")
-    print("-" * 70)
-
-    # sklearn LogisticRegression always has regularisation
-    # enabled by default. penalty=None disables it.
-
-    model_without_regularisation = LogisticRegression(
-        penalty=None,
-        solver="lbfgs",
-        max_iter=2000
-    )
-
-    no_reg_results = evaluate_model(
-        model_without_regularisation,
-        X_train,
-        X_test,
-        y_train,
-        y_test
-    )
-
-    print(
-        "Accuracy:",
-        no_reg_results["accuracy"]
-    )
-
-    print(
-        "Precision:",
-        no_reg_results["precision"]
-    )
-
-    print(
-        "Recall:",
-        no_reg_results["recall"]
-    )
-
-    print(
-        "F1 Score:",
-        no_reg_results["f1_score"]
-    )
-
-    print()
-
-    # ========================================================
-    # 2. WITH L2 REGULARISATION
-    # ========================================================
-
-    print("-" * 70)
-    print("2. LOGISTIC REGRESSION - WITH L2 REGULARISATION")
-    print("-" * 70)
-
-    model_with_regularisation = LogisticRegression(
-        penalty="l2",
-        C=1.0,
-        solver="lbfgs",
-        max_iter=2000
-    )
-
-    reg_results = evaluate_model(
-        model_with_regularisation,
-        X_train,
-        X_test,
-        y_train,
-        y_test
-    )
-
-    print(
-        "Penalty: L2"
-    )
-
-    print(
-        "C:",
-        1.0
-    )
-
-    print(
-        "Accuracy:",
-        reg_results["accuracy"]
-    )
-
-    print(
-        "Precision:",
-        reg_results["precision"]
-    )
-
-    print(
-        "Recall:",
-        reg_results["recall"]
-    )
-
-    print(
-        "F1 Score:",
-        reg_results["f1_score"]
-    )
-
-    print()
-
-    # ========================================================
-    # MODEL COMPARISON
-    # ========================================================
-
-    print("=" * 70)
-    print("MODEL COMPARISON")
-    print("=" * 70)
-
-    print(
-        f"Without Regularisation Accuracy: "
-        f"{no_reg_results['accuracy']}"
-    )
-
-    print(
-        f"With Regularisation Accuracy:    "
-        f"{reg_results['accuracy']}"
-    )
 
     # --------------------------------------------------------
-    # Select best model
+    # Preprocessor
     # --------------------------------------------------------
 
-    if (
-        reg_results["accuracy"]
-        >
-        no_reg_results["accuracy"]
-    ):
-
-        best_model = "Logistic Regression with L2 Regularisation"
-        best_accuracy = reg_results["accuracy"]
-
-    else:
-
-        best_model = "Logistic Regression without Regularisation"
-        best_accuracy = no_reg_results["accuracy"]
-
-    print()
-    print(
-        "Best Model:",
-        best_model
+    preprocessor = build_preprocessor(
+        X
     )
 
-    print(
-        "Best Accuracy:",
-        best_accuracy
-    )
 
-    # ========================================================
-    # SAVE RESULTS
-    # ========================================================
+    # --------------------------------------------------------
+    # Models
+    # --------------------------------------------------------
 
-    results = {
+    models = {
 
-        "model": "Logistic Regression",
+        "without_regularisation": (
 
-        "target": "status",
+            "LinearRegression",
 
-        "classes": [
-            str(value)
-            for value in label_encoder.classes_
-        ],
+            LinearRegression()
 
-        "without_regularisation": no_reg_results,
+        ),
 
-        "with_regularisation": {
-            **reg_results,
-            "penalty": "L2",
-            "C": 1.0
-        },
+        "ridge_regularisation": (
 
-        "best_model": best_model,
+            "Ridge",
 
-        "best_accuracy": best_accuracy
+            Ridge(
+                alpha=1.0
+            )
+
+        ),
+
+        "lasso_regularisation": (
+
+            "Lasso",
+
+            Lasso(
+                alpha=0.001,
+                max_iter=10000
+            )
+
+        )
 
     }
+
+
+    results = {}
+
+
+    # --------------------------------------------------------
+    # Train each model
+    # --------------------------------------------------------
+
+    for key, (
+        model_name,
+        estimator
+    ) in models.items():
+
+        print()
+
+        print(
+            "Training:",
+            model_name
+        )
+
+
+        pipeline = Pipeline(
+            steps=[
+
+                (
+                    "preprocessor",
+                    preprocessor
+                ),
+
+                (
+                    "model",
+                    estimator
+                )
+
+            ]
+        )
+
+
+        metrics = evaluate_model(
+
+            pipeline,
+
+            X_train,
+            X_test,
+
+            y_train,
+            y_test
+
+        )
+
+
+        metrics["model"] = model_name
+
+        results[key] = metrics
+
+
+        print(
+            "MSE :",
+            metrics["mse"]
+        )
+
+        print(
+            "RMSE:",
+            metrics["rmse"]
+        )
+
+        print(
+            "MAE :",
+            metrics["mae"]
+        )
+
+        print(
+            "R²  :",
+            metrics["r2_score"]
+        )
+
+
+    # --------------------------------------------------------
+    # Best model
+    # --------------------------------------------------------
+
+    best_key = max(
+
+        results,
+
+        key=lambda key:
+        results[key]["r2_score"]
+
+    )
+
+
+    results["best_model"] = (
+        results[best_key]["model"]
+    )
+
+    results["best_r2_score"] = (
+        results[best_key]["r2_score"]
+    )
+
+    results["target"] = TARGET
+
+    results["training_rows"] = (
+        len(X_train)
+    )
+
+    results["testing_rows"] = (
+        len(X_test)
+    )
+
+
+    # --------------------------------------------------------
+    # Save
+    # --------------------------------------------------------
 
     with open(
         RESULTS_PATH,
@@ -450,18 +558,21 @@ def run_logistic_regression():
             indent=4
         )
 
+
     print()
-    print(
-        "Results saved to:"
-    )
 
     print(
+        "Results saved to:",
         RESULTS_PATH
     )
 
+    print(
+        "Best regression model:",
+        results["best_model"]
+    )
+
     print("=" * 70)
-    print("LOGISTIC REGRESSION COMPLETED")
-    print("=" * 70)
+
 
     return results
 
@@ -472,15 +583,4 @@ def run_logistic_regression():
 
 if __name__ == "__main__":
 
-    try:
-
-        run_logistic_regression()
-
-    except Exception as e:
-
-        print()
-        print("=" * 70)
-        print("ERROR")
-        print("=" * 70)
-        print(str(e))
-        print("=" * 70)
+    run_linear_regression()

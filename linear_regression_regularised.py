@@ -1,12 +1,11 @@
 # ============================================================
-# CIVICFIX - LINEAR REGRESSION
-# WITH REGULARISATION (RIDGE)
+# CIVICFIX - RIDGE REGRESSION
+# WITH L2 REGULARISATION
 # ============================================================
 
 import os
 import json
 import warnings
-
 import numpy as np
 import pandas as pd
 
@@ -29,17 +28,21 @@ warnings.filterwarnings("ignore")
 # PATHS
 # ============================================================
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
 DATA_PATH = os.path.join(
     BASE_DIR,
-    "datasetpreprocessed_v2.csv.csv"
+    "dataset.csv"
 )
 
 RESULTS_PATH = os.path.join(
     BASE_DIR,
     "linear_regression_regularised_results.json"
 )
+
+TARGET = "latitude"
 
 
 # ============================================================
@@ -58,146 +61,110 @@ def load_dataset():
 
 
 # ============================================================
-# FIND NUMERICAL TARGET
-# ============================================================
-
-def find_target_column(df):
-
-    preferred_targets = [
-        "target",
-        "amount",
-        "count",
-        "delay",
-        "duration",
-        "latitude",
-        "longitude"
-    ]
-
-    for col in preferred_targets:
-
-        if (
-            col in df.columns
-            and pd.api.types.is_numeric_dtype(df[col])
-        ):
-
-            return col
-
-    if "status" in df.columns:
-
-        if pd.api.types.is_numeric_dtype(df["status"]):
-
-            return "status"
-
-    numeric_columns = df.select_dtypes(
-        include=np.number
-    ).columns.tolist()
-
-    if not numeric_columns:
-
-        raise ValueError(
-            "No numerical target column available."
-        )
-
-    return numeric_columns[-1]
-
-
-# ============================================================
 # PREPARE DATA
 # ============================================================
 
 def prepare_data(df):
 
-    target_col = find_target_column(df)
+    if TARGET not in df.columns:
 
-    print("=" * 70)
-    print("CIVICFIX - REGULARISED LINEAR REGRESSION")
-    print("=" * 70)
+        raise ValueError(
+            f"Target column '{TARGET}' not found."
+        )
 
-    print("Dataset shape:", df.shape)
-    print("Target column:", target_col)
 
-    # Remove rows with missing target
+    # Remove missing target rows
+
     df = df.dropna(
-        subset=[target_col]
+        subset=[TARGET]
     ).copy()
 
-    y = df[target_col]
 
-    X = df.drop(
-        columns=[target_col]
+    y = pd.to_numeric(
+        df[TARGET],
+        errors="coerce"
     )
+
+
+    valid = y.notna()
+
+    df = df.loc[valid].copy()
+
+    y = y.loc[valid]
+
 
     # --------------------------------------------------------
     # Remove unsuitable columns
     # --------------------------------------------------------
 
-    columns_to_remove = []
+    columns_to_remove = [
 
-    for col in X.columns:
+        TARGET,
 
-        col_lower = col.lower()
+        "status",
 
-        if col_lower in [
-            "id",
-            "incident_id",
-            "unique_key"
-        ]:
+        "created_date",
 
-            columns_to_remove.append(col)
+        "closed_date",
 
-        elif col_lower in [
-            "created_date",
-            "closed_date"
-        ]:
+        "incident_address",
 
-            columns_to_remove.append(col)
+        "resolution_description"
 
-        elif col_lower in [
-            "incident_address",
-            "resolution_description"
-        ]:
+    ]
 
-            columns_to_remove.append(col)
 
-    X = X.drop(
+    X = df.drop(
         columns=columns_to_remove,
         errors="ignore"
     )
 
+
     # --------------------------------------------------------
-    # Remove extremely high-cardinality categorical columns
+    # Remove very high-cardinality categorical columns
     # --------------------------------------------------------
 
     high_cardinality = []
 
-    for col in X.select_dtypes(
-        include=["object", "string", "category"]
-    ).columns:
+
+    categorical_columns = X.select_dtypes(
+        include=[
+            "object",
+            "string",
+            "category"
+        ]
+    ).columns
+
+
+    for column in categorical_columns:
 
         ratio = (
-            X[col].nunique(dropna=True)
-            / max(len(X), 1)
+            X[column].nunique(
+                dropna=True
+            )
+            /
+            max(len(X), 1)
         )
+
 
         if ratio > 0.80:
 
-            high_cardinality.append(col)
+            high_cardinality.append(
+                column
+            )
+
 
     X = X.drop(
         columns=high_cardinality,
         errors="ignore"
     )
 
-    print(
-        "Features used:",
-        X.shape[1]
-    )
 
-    return X, y, target_col
+    return X, y
 
 
 # ============================================================
-# BUILD RIDGE REGRESSION PIPELINE
+# BUILD RIDGE PIPELINE
 # ============================================================
 
 def build_pipeline(X):
@@ -206,9 +173,15 @@ def build_pipeline(X):
         include=np.number
     ).columns.tolist()
 
+
     categorical_features = X.select_dtypes(
-        include=["object", "string", "category"]
+        include=[
+            "object",
+            "string",
+            "category"
+        ]
     ).columns.tolist()
+
 
     # --------------------------------------------------------
     # Numerical pipeline
@@ -216,18 +189,22 @@ def build_pipeline(X):
 
     numeric_pipeline = Pipeline(
         steps=[
+
             (
                 "imputer",
                 SimpleImputer(
                     strategy="median"
                 )
             ),
+
             (
                 "scaler",
                 StandardScaler()
             )
+
         ]
     )
+
 
     # --------------------------------------------------------
     # Categorical pipeline
@@ -235,12 +212,14 @@ def build_pipeline(X):
 
     categorical_pipeline = Pipeline(
         steps=[
+
             (
                 "imputer",
                 SimpleImputer(
                     strategy="most_frequent"
                 )
             ),
+
             (
                 "onehot",
                 OneHotEncoder(
@@ -248,10 +227,13 @@ def build_pipeline(X):
                     sparse_output=False
                 )
             )
+
         ]
     )
 
+
     transformers = []
+
 
     if numeric_features:
 
@@ -263,6 +245,7 @@ def build_pipeline(X):
             )
         )
 
+
     if categorical_features:
 
         transformers.append(
@@ -273,29 +256,35 @@ def build_pipeline(X):
             )
         )
 
+
     preprocessor = ColumnTransformer(
         transformers=transformers,
         remainder="drop"
     )
 
+
     # --------------------------------------------------------
-    # Ridge Regression
+    # Ridge
     # --------------------------------------------------------
 
     model = Pipeline(
         steps=[
+
             (
                 "preprocessor",
                 preprocessor
             ),
+
             (
                 "regressor",
                 Ridge(
                     alpha=1.0
                 )
             )
+
         ]
     )
+
 
     return model
 
@@ -306,19 +295,45 @@ def build_pipeline(X):
 
 def train_model():
 
+    print("=" * 70)
+    print(
+        "CIVICFIX - RIDGE REGRESSION "
+        "WITH L2 REGULARISATION"
+    )
+    print("=" * 70)
+
+
     df = load_dataset()
 
-    X, y, target_col = prepare_data(df)
+    X, y = prepare_data(
+        df
+    )
+
 
     # --------------------------------------------------------
-    # Train / Test Split
+    # Train/Test Split
     # --------------------------------------------------------
 
     X_train, X_test, y_train, y_test = train_test_split(
+
         X,
         y,
+
         test_size=0.20,
+
         random_state=42
+
+    )
+
+
+    print(
+        "Dataset shape:",
+        df.shape
+    )
+
+    print(
+        "Target column:",
+        TARGET
     )
 
     print(
@@ -331,39 +346,48 @@ def train_model():
         len(X_test)
     )
 
+
     # --------------------------------------------------------
-    # Build model
+    # Build and train
     # --------------------------------------------------------
 
-    model = build_pipeline(X)
+    model = build_pipeline(
+        X
+    )
 
-    print("\nTraining Ridge Regression...")
+
+    print(
+        "\nTraining Ridge Regression..."
+    )
+
 
     model.fit(
         X_train,
         y_train
     )
 
-    print("Training completed.")
 
     # --------------------------------------------------------
-    # Predictions
+    # Prediction
     # --------------------------------------------------------
 
     y_pred = model.predict(
         X_test
     )
 
-    # ========================================================
-    # METRICS
-    # ========================================================
+
+    # --------------------------------------------------------
+    # Metrics
+    # --------------------------------------------------------
 
     mse = mean_squared_error(
         y_test,
         y_pred
     )
 
-    rmse = np.sqrt(mse)
+    rmse = np.sqrt(
+        mse
+    )
 
     mae = mean_absolute_error(
         y_test,
@@ -375,132 +399,154 @@ def train_model():
         y_pred
     )
 
-    # ========================================================
-    # PRINT RESULTS
-    # ========================================================
+
+    # --------------------------------------------------------
+    # Display
+    # --------------------------------------------------------
 
     print("\n" + "=" * 70)
-    print("REGULARISED LINEAR REGRESSION RESULTS")
+
+    print(
+        "RIDGE REGRESSION RESULTS"
+    )
+
     print("=" * 70)
 
-    print("Model : Ridge Regression")
-    print("Alpha : 1.0")
-    print("Target:", target_col)
-
     print(
-        "MAE :",
-        round(mae, 4)
+        "Target:",
+        TARGET
     )
 
     print(
-        "MSE :",
-        round(mse, 4)
+        "L2 alpha:",
+        1.0
     )
 
     print(
-        "RMSE:",
-        round(rmse, 4)
+        f"MAE : {mae:.6f}"
     )
 
     print(
-        "R²  :",
-        round(r2, 4)
+        f"MSE : {mse:.6f}"
     )
 
-    # ========================================================
-    # SAMPLE PREDICTIONS
-    # ========================================================
+    print(
+        f"RMSE: {rmse:.6f}"
+    )
+
+    print(
+        f"R²  : {r2:.6f}"
+    )
+
+
+    # --------------------------------------------------------
+    # Sample predictions
+    # --------------------------------------------------------
 
     sample_size = min(
         10,
         len(y_test)
     )
 
-    comparison = pd.DataFrame(
+
+    predictions = [
+
         {
-            "Actual": y_test.iloc[:sample_size].values,
-            "Predicted": y_pred[:sample_size]
+
+            "actual":
+            round(
+                float(actual),
+                4
+            ),
+
+            "predicted":
+            round(
+                float(predicted),
+                4
+            )
+
         }
-    )
 
-    print("\nSample Predictions:")
-    print(comparison)
+        for actual, predicted
 
-    # ========================================================
-    # RESULTS FOR FLASK
-    # ========================================================
+        in zip(
+
+            y_test.iloc[
+                :sample_size
+            ],
+
+            y_pred[
+                :sample_size
+            ]
+
+        )
+
+    ]
+
+
+    # --------------------------------------------------------
+    # Results
+    # --------------------------------------------------------
 
     results = {
 
-        "model": "Ridge Regression",
+        "model":
+        "Ridge Regression",
 
-        "regularisation": "L2",
+        "regularisation":
+        "L2",
 
-        "alpha": 1.0,
+        "alpha":
+        1.0,
 
-        "target": target_col,
+        "target":
+        TARGET,
 
-        "dataset_rows": int(
-            len(df)
-        ),
+        "dataset_rows":
+        int(len(df)),
 
-        "training_rows": int(
-            len(X_train)
-        ),
+        "training_rows":
+        int(len(X_train)),
 
-        "testing_rows": int(
-            len(X_test)
-        ),
+        "testing_rows":
+        int(len(X_test)),
 
-        "features": int(
-            X.shape[1]
-        ),
+        "features":
+        int(X.shape[1]),
 
-        "mae": round(
+        "mae":
+        round(
             float(mae),
-            4
+            6
         ),
 
-        "mse": round(
+        "mse":
+        round(
             float(mse),
-            4
+            6
         ),
 
-        "rmse": round(
+        "rmse":
+        round(
             float(rmse),
-            4
+            6
         ),
 
-        "r2": round(
+        "r2":
+        round(
             float(r2),
-            4
+            6
         ),
 
-        "predictions": [
+        "predictions":
+        predictions
 
-            {
-                "actual": round(
-                    float(actual),
-                    4
-                ),
-
-                "predicted": round(
-                    float(predicted),
-                    4
-                )
-            }
-
-            for actual, predicted
-            in zip(
-                y_test.iloc[:sample_size],
-                y_pred[:sample_size]
-            )
-        ]
     }
 
-    # ========================================================
-    # SAVE RESULTS
-    # ========================================================
+
+    # --------------------------------------------------------
+    # Save
+    # --------------------------------------------------------
 
     with open(
         RESULTS_PATH,
@@ -514,12 +560,14 @@ def train_model():
             indent=4
         )
 
+
     print(
         "\nResults saved to:",
         RESULTS_PATH
     )
 
     print("=" * 70)
+
 
     return results
 

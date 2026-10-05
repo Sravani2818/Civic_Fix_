@@ -1,1 +1,7 @@
 datasetpreprocessed.csv
+.venv/
+__pycache__/
+*.pyc
+.idea/
+datasetpreprocessed_v2.csv
+datasetpreprocessed.csv

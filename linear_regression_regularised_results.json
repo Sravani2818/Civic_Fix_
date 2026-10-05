@@ -3,54 +3,54 @@
     "regularisation": "L2",
     "alpha": 1.0,
     "target": "latitude",
-    "dataset_rows": 49300,
-    "training_rows": 39440,
-    "testing_rows": 9860,
-    "features": 10,
-    "mae": 0.023,
-    "mse": 0.0009,
-    "rmse": 0.03,
-    "r2": 0.8723,
+    "dataset_rows": 50000,
+    "training_rows": 39164,
+    "testing_rows": 9791,
+    "features": 9,
+    "mae": 0.02209,
+    "mse": 0.000842,
+    "rmse": 0.029009,
+    "r2": 0.882242,
     "predictions": [
         {
-            "actual": 40.7531,
-            "predicted": 40.7451
+            "actual": 40.8419,
+            "predicted": 40.8512
         },
         {
-            "actual": 40.7261,
-            "predicted": 40.6821
+            "actual": 40.8067,
+            "predicted": 40.792
         },
         {
-            "actual": 40.8141,
-            "predicted": 40.8407
+            "actual": 40.7642,
+            "predicted": 40.7677
         },
         {
-            "actual": 40.6978,
-            "predicted": 40.6923
+            "actual": 40.6358,
+            "predicted": 40.6545
         },
         {
-            "actual": 40.7086,
-            "predicted": 40.7152
+            "actual": 40.8728,
+            "predicted": 40.8379
         },
         {
-            "actual": 40.6504,
-            "predicted": 40.6513
+            "actual": 40.8531,
+            "predicted": 40.8513
         },
         {
-            "actual": 40.6208,
-            "predicted": 40.617
+            "actual": 40.8022,
+            "predicted": 40.7709
         },
         {
-            "actual": 40.7758,
-            "predicted": 40.7899
+            "actual": 40.8145,
+            "predicted": 40.8556
         },
         {
-            "actual": 40.6259,
-            "predicted": 40.6726
+            "actual": 40.6136,
+            "predicted": 40.6579
         },
         {
-            "actual": 40.6075,
-            "predicted": 40.6523
+            "actual": 40.8286,
+            "predicted": 40.8588
         }
     ]
 }
